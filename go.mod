@@ -1,3 +1,3 @@
-module github.com/noobtrump/Zinx_Rewriter
+module Zinx_Rewriter
 
 go 1.23.6
