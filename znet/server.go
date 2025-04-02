@@ -1,7 +1,6 @@
 package znet
 
 import (
-	"errors"
 	"fmt"
 	"net"
 	"time"
@@ -10,44 +9,44 @@ import (
 	"Zinx_Rewriter/ziface"
 )
 
-// IServer 接口的实现
+// iServer 接口实现，定义一个Server服务类
 type Server struct {
-	// 定义服务器名称，IP链接方式，绑定IP地址，及端口
-	Name      string
+	//服务器的名称
+	Name string
+	//tcp4 or other
 	IPVersion string
-	IP        string
-	Port      int
-	Router    ziface.IRouter
+	//服务绑定的IP地址
+	IP string
+	//服务绑定的端口
+	Port int
+	//当前Server由用户绑定的回调router,也就是Server注册的链接对应的处理业务
+	Router ziface.IRouter
+	//
+	msgHandle ziface.IMsgHandle
 }
 
 /*
 创建一个服务器句柄
 */
 func NewServer(name string) ziface.IServer {
-
 	//初始化全局配置文件
 	utils.GlobalObject.Reload()
 
 	s := &Server{
-		Name:      name,
+		Name:      utils.GlobalObject.Name,
 		IPVersion: "tcp4",
-		IP:        "0.0.0.0",
-		Port:      7777,
+		IP:        utils.GlobalObject.Host,
+		Port:      utils.GlobalObject.TcpPort,
 		Router:    nil,
+		msgHandle: NewMsgHandle(), //msgHandler 初始化
 	}
 
 	return s
 }
 
-// ============== 定义当前客户端链接的handle api ===========
-func CallBackToClient(conn *net.TCPConn, data []byte, cnt int) error {
-	//回显业务
-	fmt.Println("[Conn Handle] CallBackToClient ... ")
-	if _, err := conn.Write(data[:cnt]); err != nil {
-		fmt.Println("write back buf err ", err)
-		return errors.New("CallBackToClient error")
-	}
-	return nil
+func (s *Server) AddRouter(msgId uint32, router ziface.IRouter) {
+	s.Router = router // 将路由绑定到Server
+	fmt.Println("Add Router succ!")
 }
 
 //============== 实现 ziface.IServer 里的全部接口方法 ========
@@ -78,7 +77,7 @@ func (s *Server) Start() {
 		//已经监听成功
 		fmt.Println("start Zinx server  ", s.Name, " succ, now listenning...")
 
-		//TODO server.go 应该有一个自动生成ID的方法
+		//TODO server.go 应该要能自动生成ID
 		var cid uint32
 		cid = 0
 
@@ -93,12 +92,29 @@ func (s *Server) Start() {
 
 			//3.2 TODO Server.Start() 设置服务器最大连接控制,如果超过最大连接，那么则关闭此新的连接
 
-			//3.3 处理该新连接请求的 业务 方法， 此时应该有 handler 和 conn是绑定的
-			dealConn := NewConntion(conn, cid, CallBackToClient)
+			//3.3 TODO Server.Start() 处理该新连接请求的 业务 方法， 此时应该有 handler 和 conn是绑定的
+			dealConn := NewConntion(conn, cid, s.msgHandle, s.Router)
 			cid++
 
 			//3.4 启动当前链接的处理业务
 			go dealConn.Start()
+			//我们这里暂时做一个最大512字节的回显服务
+			go func() {
+				//不断的循环从客户端获取数据
+				for {
+					buf := make([]byte, 512)
+					cnt, err := conn.Read(buf)
+					if err != nil {
+						fmt.Println("recv buf err ", err)
+						continue
+					}
+					//回显
+					if _, err := conn.Write(buf[:cnt]); err != nil {
+						fmt.Println("write back buf err ", err)
+						continue
+					}
+				}
+			}()
 		}
 	}()
 }
