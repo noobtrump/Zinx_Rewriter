@@ -10,6 +10,5 @@ type IDataPack interface {
 	GetHeadLen() uint32
 	//封包方法
 	Pack(msg IMessage) ([]byte, error)
-	//拆包方法
 	Unpack([]byte) (IMessage, error)
 }

@@ -24,7 +24,7 @@ type GlobalObj struct {
 	MaxConn          int    //当前服务器主机允许的最大链接个数
 	WorkerPoolSize   uint32 //业务工作Worker池的数量
 	MaxWorkerTaskLen uint32 //业务工作Worker对应负责的任务队列最大任务存储数量
-
+	MaxMsgChanLen    uint32 //最大通信通道长度
 	//config file path
 	ConfFilePath string
 }

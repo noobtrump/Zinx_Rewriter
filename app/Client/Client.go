@@ -1,5 +1,3 @@
-//go:build client0
-
 package main
 
 import (

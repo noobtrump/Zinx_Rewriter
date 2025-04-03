@@ -6,6 +6,7 @@ import (
 	"io"
 	"net"
 
+	"Zinx_Rewriter/utils"
 	"Zinx_Rewriter/ziface"
 )
 
@@ -27,6 +28,8 @@ type Connection struct {
 	Router ziface.IRouter
 	//无缓冲管道，读、写两个goroutine之间的消息通信
 	msgChan chan []byte
+	//有缓冲管道，用于读、写两个goroutine之间的消息通信
+	msgBuffChan chan []byte
 }
 
 // 创建连接的方法
@@ -41,6 +44,7 @@ func NewConntion(conn *net.TCPConn, connID uint32, msgHandler ziface.IMsgHandle,
 		MsgHandle:    msgHandler,
 		msgChan:      make(chan []byte),
 		ExitBuffChan: make(chan bool, 1),
+		msgBuffChan:  make(chan []byte, utils.GlobalObject.MaxMsgChanLen),
 	}
 
 	return c
@@ -164,6 +168,24 @@ func (c *Connection) SendMsg(msgId uint32, data []byte) error {
 
 	//写回客户端（发送给Channel）
 	c.msgChan <- msg
+
+	return nil
+}
+
+func (c *Connection) SendBuffMsg(msgId uint32, data []byte) error {
+	if c.isClosed == true {
+		return errors.New("Connection closed when send buff msg")
+	}
+	//将data封包，并且发送
+	dp := NewDataPack()
+	msg, err := dp.Pack(NewMsgPackage(msgId, data))
+	if err != nil {
+		fmt.Println("Pack error msg id = ", msgId)
+		return errors.New("Pack error msg ")
+	}
+
+	//写回客户端
+	c.msgBuffChan <- msg
 
 	return nil
 }

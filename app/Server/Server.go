@@ -38,7 +38,6 @@ func (this *HelloZinxRouter) Handle(request ziface.IRequest) {
 		fmt.Println(err)
 	}
 }
-
 func main() {
 	//创建一个server句柄
 	s := znet.NewServer("MyZinxServer")
@@ -47,6 +46,9 @@ func main() {
 	s.AddRouter(0, &PingRouter{})
 	s.AddRouter(1, &HelloZinxRouter{})
 
-	//开启服务
-	s.Serve()
+	// 开启服务
+	if err := s; err != nil {
+		fmt.Printf("server start failed, err: %v\n", err)
+		return
+	}
 }

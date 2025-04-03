@@ -111,7 +111,7 @@ func (s *Server) Start() {
 				continue
 			}
 			//3.3 TODO Server.Start() 处理该新连接请求的 业务 方法， 此时应该有 handler 和 conn是绑定的
-			dealConn := NewConntion(s, conn, cid, s.msgHandle, s.Router)
+			dealConn := NewConntion(conn, cid, s.msgHandle, s.Router)
 			cid++
 
 			//3.4 启动当前链接的处理业务

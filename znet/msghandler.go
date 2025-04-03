@@ -5,13 +5,19 @@ import (
 	"Zinx_Rewriter/ziface"
 	"fmt"
 	"strconv"
+	"sync"
 )
 
 type MsgHandle struct {
 	Apis           map[uint32]ziface.IRouter //存放每个MsgId 所对应的处理方法的map属性
 	WorkerPoolSize uint32                    //业务工作Worker池的数量
 	TaskQueue      []chan ziface.IRequest    //Worker负责取任务的消息队列
-	workerPool     *WorkerPool
+	workerPool     *workerPool
+}
+
+type workerPool struct {
+	taskQueue chan func()    // 任务队列（存储待执行的任务函数）
+	wg        sync.WaitGroup // 用于等待所有任务完成
 }
 
 func NewMsgHandle() *MsgHandle {
@@ -80,4 +86,16 @@ func (mh *MsgHandle) StartWorkerPool() {
 		//启动当前Worker，阻塞的等待对应的任务队列是否有消息传递进来
 		go mh.StartOneWorker(i, mh.TaskQueue[i])
 	}
+}
+
+// 将消息交给TaskQueue,由worker进行处理
+func (mh *MsgHandle) SendMsgToTaskQueue(request ziface.IRequest) {
+	//根据ConnID来分配当前的连接应该由哪个worker负责处理
+	//轮询的平均分配法则
+
+	//得到需要处理此条连接的workerID
+	workerID := request.GetConnection().GetConnID() % mh.WorkerPoolSize
+	fmt.Println("Add ConnID=", request.GetConnection().GetConnID(), " request msgID=", request.GetMsgId(), "to workerID=", workerID)
+	//将请求消息发送给任务队列
+	mh.TaskQueue[workerID] <- request
 }
